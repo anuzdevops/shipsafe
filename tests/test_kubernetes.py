@@ -40,7 +40,9 @@ spec:
     assert deployment.name == "backend"
     assert deployment.labels == {"app": "backend"}
     assert deployment.containers[0].name == "backend"
-    assert deployment.containers[0].ports == [3000]
+    assert len(deployment.containers[0].ports) == 1
+    assert deployment.containers[0].ports[0].name is None
+    assert deployment.containers[0].ports[0].port == 3000
 
 
 def test_parse_kubernetes_service(tmp_path: Path):

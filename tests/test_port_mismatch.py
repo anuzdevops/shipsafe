@@ -1,5 +1,6 @@
 from shipsafe.parsers.kubernetes import (
     ContainerInfo,
+    ContainerPort,
     DeploymentInfo,
     ServiceInfo,
 )
@@ -13,7 +14,12 @@ def test_detects_port_mismatch():
         containers=[
             ContainerInfo(
                 name="backend",
-                ports=[3000],
+                ports=[
+                    ContainerPort(
+                        name=None,
+                        port=3000,
+                    )
+                ],
             )
         ],
     )
@@ -38,7 +44,12 @@ def test_matching_port_has_no_finding():
         containers=[
             ContainerInfo(
                 name="backend",
-                ports=[3000],
+                ports=[
+                    ContainerPort(
+                        name=None,
+                        port=3000,
+                    )
+                ],
             )
         ],
     )
@@ -52,3 +63,62 @@ def test_matching_port_has_no_finding():
     findings = check_port_mismatch(deployment, service)
 
     assert findings == []
+
+
+def test_named_port_matches():
+    deployment = DeploymentInfo(
+        name="backend",
+        labels={"app": "backend"},
+        containers=[
+            ContainerInfo(
+                name="backend",
+                ports=[
+                    ContainerPort(
+                        name="http",
+                        port=3000,
+                    )
+                ],
+            )
+        ],
+    )
+
+    service = ServiceInfo(
+        name="backend-service",
+        selector={"app": "backend"},
+        target_ports=["http"],
+    )
+
+    findings = check_port_mismatch(deployment, service)
+
+    assert findings == []
+
+
+def test_unknown_named_port_is_detected():
+    deployment = DeploymentInfo(
+        name="backend",
+        labels={"app": "backend"},
+        containers=[
+            ContainerInfo(
+                name="backend",
+                ports=[
+                    ContainerPort(
+                        name="http",
+                        port=3000,
+                    )
+                ],
+            )
+        ],
+    )
+
+    service = ServiceInfo(
+        name="backend-service",
+        selector={"app": "backend"},
+        target_ports=["grpc"],
+    )
+
+    findings = check_port_mismatch(deployment, service)
+
+    assert len(findings) == 1
+    assert findings[0].rule_id == "K8S001"
+    assert findings[0].severity == "HIGH"
+    assert "grpc" in findings[0].message

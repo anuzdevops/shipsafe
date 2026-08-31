@@ -5,9 +5,15 @@ import yaml
 
 
 @dataclass
+class ContainerPort:
+    name: str | None
+    port: int
+
+
+@dataclass
 class ContainerInfo:
     name: str
-    ports: list[int] = field(default_factory=list)
+    ports: list[ContainerPort] = field(default_factory=list)
 
 
 @dataclass
@@ -21,7 +27,7 @@ class DeploymentInfo:
 class ServiceInfo:
     name: str
     selector: dict[str, str]
-    target_ports: list[int]
+    target_ports: list[int | str]
 
 
 def parse_kubernetes_file(path: Path) -> list[dict]:
@@ -73,7 +79,12 @@ def extract_deployment(resource: dict) -> DeploymentInfo | None:
             container_port = port.get("containerPort")
 
             if isinstance(container_port, int):
-                ports.append(container_port)
+                ports.append(
+                    ContainerPort(
+                        name=port.get("name"),
+                        port=container_port,
+                    )
+                )
 
         containers.append(
             ContainerInfo(
@@ -102,7 +113,7 @@ def extract_service(resource: dict) -> ServiceInfo | None:
     for port in spec.get("ports", []):
         target_port = port.get("targetPort")
 
-        if isinstance(target_port, int):
+        if isinstance(target_port, (int, str)):
             target_ports.append(target_port)
 
     return ServiceInfo(
