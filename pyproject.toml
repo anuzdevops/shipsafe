@@ -12,6 +12,9 @@ license = {text = "MIT"}
 authors = [
     {name = "Anuj Yadav"}
 ]
+dependencies = [
+    "pyyaml>=6.0",
+]
 
 [project.scripts]
 shipsafe = "shipsafe.cli:main"
