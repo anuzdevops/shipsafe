@@ -4,7 +4,7 @@ from shipsafe.parsers.kubernetes import (
     DeploymentInfo,
     ServiceInfo,
 )
-from shipsafe.rules.kubernetes.port_mismatch import check_port_mismatch
+from shipsafe.rules.kubernetes.port_mismatch import PortMismatchRule
 
 
 def test_detects_port_mismatch():
@@ -30,7 +30,7 @@ def test_detects_port_mismatch():
         target_ports=[8080],
     )
 
-    findings = check_port_mismatch(deployment, service)
+    findings = PortMismatchRule().check((deployment, service))
 
     assert len(findings) == 1
     assert findings[0].rule_id == "K8S001"
@@ -60,7 +60,7 @@ def test_matching_port_has_no_finding():
         target_ports=[3000],
     )
 
-    findings = check_port_mismatch(deployment, service)
+    findings = PortMismatchRule().check((deployment, service))
 
     assert findings == []
 
@@ -88,7 +88,7 @@ def test_named_port_matches():
         target_ports=["http"],
     )
 
-    findings = check_port_mismatch(deployment, service)
+    findings = PortMismatchRule().check((deployment, service))
 
     assert findings == []
 
@@ -116,7 +116,7 @@ def test_unknown_named_port_is_detected():
         target_ports=["grpc"],
     )
 
-    findings = check_port_mismatch(deployment, service)
+    findings = PortMismatchRule().check((deployment, service))
 
     assert len(findings) == 1
     assert findings[0].rule_id == "K8S001"

@@ -2,13 +2,15 @@ import argparse
 from pathlib import Path
 
 from shipsafe.scanner.detector import detect_repository
-from shipsafe.scanner.engine import run_kubernetes_rules
+from shipsafe.scanner.engine import ScannerEngine
 
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="shipsafe",
-        description="Pre-deployment sanity checks for Docker, Kubernetes, and CI/CD.",
+        description=(
+            "Pre-deployment sanity checks for Docker, "
+            "Kubernetes, and CI/CD."
+        )
     )
 
     subparsers = parser.add_subparsers(dest="command")
@@ -20,22 +22,18 @@ def main():
 
     scan_parser.add_argument(
         "path",
-        nargs="?",
-        default=".",
         help="Path to the repository to scan.",
     )
 
     args = parser.parse_args()
 
     if args.command == "scan":
-        run_scan(args.path)
+        scan(Path(args.path))
     else:
         parser.print_help()
 
 
-def run_scan(path: str):
-    root = Path(path)
-
+def scan(path: Path):
     print()
     print("ShipSafe v0.1.0")
     print("===============")
@@ -43,19 +41,26 @@ def run_scan(path: str):
     print(f"Scanning: {path}")
     print()
 
-    detected = detect_repository(path)
+    detected = detect_repository(str(path))
 
     print("Detected:")
-    print(f"  {'✓' if detected['docker'] else '✗'} Docker")
-    print(f"  {'✓' if detected['kubernetes'] else '✗'} Kubernetes")
-    print(f"  {'✓' if detected['github_actions'] else '✗'} GitHub Actions")
-
+    print(
+        f"  {'✓' if detected['docker'] else '✗'} Docker"
+    )
+    print(
+        f"  {'✓' if detected['kubernetes'] else '✗'} Kubernetes"
+    )
+    print(
+        f"  {'✓' if detected['github_actions'] else '✗'} GitHub Actions"
+    )
     print()
+
+    engine = ScannerEngine()
 
     findings = []
 
     if detected["kubernetes"]:
-        findings.extend(run_kubernetes_rules(root))
+        findings.extend(engine.scan_kubernetes(path))
 
     if findings:
         print("Findings:")
