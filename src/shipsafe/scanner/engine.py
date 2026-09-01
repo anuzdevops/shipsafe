@@ -6,10 +6,10 @@ from shipsafe.parsers.kubernetes import (
     parse_kubernetes_file,
 )
 from shipsafe.rules.kubernetes.port_mismatch import PortMismatchRule
-from shipsafe.rules.kubernetes.service_selector import ServiceSelectorRule
-from shipsafe.rules.kubernetes.service_port import DuplicatePortNameRule
 from shipsafe.rules.kubernetes.readiness_probe import ReadinessProbeRule
 from shipsafe.rules.kubernetes.resources import ResourceConfigurationRule
+from shipsafe.rules.kubernetes.service_port import DuplicatePortNameRule
+from shipsafe.rules.kubernetes.service_selector import ServiceSelectorRule
 from shipsafe.scanner.context import KubernetesContext
 from shipsafe.scanner.result import Finding
 
@@ -26,22 +26,16 @@ class ScannerEngine:
             ResourceConfigurationRule(),
         ]
 
-    def scan_kubernetes(self, path: Path) -> list[Finding]:
-        """Scan Kubernetes manifests in a directory."""
-        context = self._build_kubernetes_context(path)
-
+    def scan(self, path: Path) -> list[Finding]:
+        """Run all currently supported scanners."""
         findings: list[Finding] = []
 
-        for rule in self.kubernetes_rules:
-            findings.extend(rule.check(context))
+        findings.extend(self.scan_kubernetes(path))
 
         return findings
 
-    def _build_kubernetes_context(
-        self,
-        path: Path,
-    ) -> KubernetesContext:
-        """Parse Kubernetes manifests into a rule context."""
+    def scan_kubernetes(self, path: Path) -> list[Finding]:
+        """Scan Kubernetes manifests in a directory."""
         deployments = []
         services = []
 
@@ -63,7 +57,14 @@ class ScannerEngine:
                 if service:
                     services.append(service)
 
-        return KubernetesContext(
+        context = KubernetesContext(
             deployments=deployments,
             services=services,
         )
+
+        findings: list[Finding] = []
+
+        for rule in self.kubernetes_rules:
+            findings.extend(rule.check(context))
+
+        return findings
