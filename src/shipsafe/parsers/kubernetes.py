@@ -14,6 +14,8 @@ class ContainerPort:
 class ContainerInfo:
     name: str
     ports: list[ContainerPort] = field(default_factory=list)
+    has_readiness_probe: bool = False
+    has_resources: bool = False
 
 
 @dataclass
@@ -24,10 +26,18 @@ class DeploymentInfo:
 
 
 @dataclass
+class ServicePort:
+    port: int
+    target_port: int | str | None
+    name: str | None = None
+
+
+@dataclass
 class ServiceInfo:
     name: str
     selector: dict[str, str]
-    target_ports: list[int | str]
+    ports: list[ServicePort] = field(default_factory=list)
+    target_ports: list[int | str] = field(default_factory=list)
 
 
 def parse_kubernetes_file(path: Path) -> list[dict]:
@@ -90,6 +100,12 @@ def extract_deployment(resource: dict) -> DeploymentInfo | None:
             ContainerInfo(
                 name=container.get("name", "unknown"),
                 ports=ports,
+                has_readiness_probe=bool(
+                    container.get("readinessProbe")
+                ),
+                has_resources=bool(
+                    container.get("resources")
+                ),
             )
         )
 
@@ -108,10 +124,21 @@ def extract_service(resource: dict) -> ServiceInfo | None:
     metadata = resource.get("metadata", {})
     spec = resource.get("spec", {})
 
+    service_ports = []
     target_ports = []
 
     for port in spec.get("ports", []):
+        service_port = port.get("port")
         target_port = port.get("targetPort")
+
+        if isinstance(service_port, int):
+            service_ports.append(
+                ServicePort(
+                    name=port.get("name"),
+                    port=service_port,
+                    target_port=target_port,
+                )
+            )
 
         if isinstance(target_port, (int, str)):
             target_ports.append(target_port)
@@ -119,5 +146,6 @@ def extract_service(resource: dict) -> ServiceInfo | None:
     return ServiceInfo(
         name=metadata.get("name", "unknown"),
         selector=spec.get("selector", {}),
+        ports=service_ports,
         target_ports=target_ports,
     )

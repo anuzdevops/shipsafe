@@ -1,5 +1,5 @@
-from shipsafe.parsers.kubernetes import DeploymentInfo, ServiceInfo
 from shipsafe.rules.base import Rule
+from shipsafe.scanner.context import KubernetesContext
 from shipsafe.scanner.result import Finding
 
 
@@ -15,16 +15,35 @@ class PortMismatchRule(Rule):
 
     def check(
         self,
-        context: tuple[DeploymentInfo, ServiceInfo],
+        context: KubernetesContext,
     ) -> list[Finding]:
-        deployment, service = context
+        findings = []
 
-        if not self._selector_matches(
-            deployment.labels,
-            service.selector,
-        ):
-            return []
+        for service in context.services:
+            matching_deployments = [
+                deployment
+                for deployment in context.deployments
+                if self._selector_matches(
+                    deployment.labels,
+                    service.selector,
+                )
+            ]
 
+            for deployment in matching_deployments:
+                findings.extend(
+                    self._check_service_against_deployment(
+                        service,
+                        deployment,
+                    )
+                )
+
+        return findings
+
+    def _check_service_against_deployment(
+        self,
+        service,
+        deployment,
+    ) -> list[Finding]:
         container_ports = {
             port.port
             for container in deployment.containers

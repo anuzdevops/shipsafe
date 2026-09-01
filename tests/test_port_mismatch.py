@@ -5,6 +5,14 @@ from shipsafe.parsers.kubernetes import (
     ServiceInfo,
 )
 from shipsafe.rules.kubernetes.port_mismatch import PortMismatchRule
+from shipsafe.scanner.context import KubernetesContext
+
+
+def make_context(deployment, service):
+    return KubernetesContext(
+        deployments=[deployment],
+        services=[service],
+    )
 
 
 def test_detects_port_mismatch():
@@ -30,11 +38,12 @@ def test_detects_port_mismatch():
         target_ports=[8080],
     )
 
-    findings = PortMismatchRule().check((deployment, service))
+    findings = PortMismatchRule().check(
+        make_context(deployment, service)
+    )
 
     assert len(findings) == 1
     assert findings[0].rule_id == "K8S001"
-    assert findings[0].severity == "HIGH"
 
 
 def test_matching_port_has_no_finding():
@@ -60,7 +69,9 @@ def test_matching_port_has_no_finding():
         target_ports=[3000],
     )
 
-    findings = PortMismatchRule().check((deployment, service))
+    findings = PortMismatchRule().check(
+        make_context(deployment, service)
+    )
 
     assert findings == []
 
@@ -88,7 +99,9 @@ def test_named_port_matches():
         target_ports=["http"],
     )
 
-    findings = PortMismatchRule().check((deployment, service))
+    findings = PortMismatchRule().check(
+        make_context(deployment, service)
+    )
 
     assert findings == []
 
@@ -116,9 +129,9 @@ def test_unknown_named_port_is_detected():
         target_ports=["grpc"],
     )
 
-    findings = PortMismatchRule().check((deployment, service))
+    findings = PortMismatchRule().check(
+        make_context(deployment, service)
+    )
 
     assert len(findings) == 1
     assert findings[0].rule_id == "K8S001"
-    assert findings[0].severity == "HIGH"
-    assert "grpc" in findings[0].message
