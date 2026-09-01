@@ -2,7 +2,7 @@
 
 **Pre-deployment security checks for modern DevOps**
 
-![ShipSafe Banner](assets/shipsafe-banner.png)
+![ShipSafe Banner](assests/shipsafe-banner.png)
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](#)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](#)
