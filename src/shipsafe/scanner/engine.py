@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from shipsafe.parsers.docker import parse_dockerfile
+from shipsafe.parsers.github_actions import parse_workflow
 from shipsafe.parsers.kubernetes import (
     extract_deployment,
     extract_service,
@@ -13,12 +14,20 @@ from shipsafe.rules.docker import (
     RootUserRule,
     UnpinnedBaseImageRule,
 )
+from shipsafe.rules.github_actions import (
+    ExcessivePermissionsRule,
+    MissingTimeoutRule,
+    PullRequestTargetRule,
+    SecretExposureRule,
+    UnpinnedActionRule,
+)
 from shipsafe.rules.kubernetes.port_mismatch import PortMismatchRule
 from shipsafe.rules.kubernetes.readiness_probe import ReadinessProbeRule
 from shipsafe.rules.kubernetes.resources import ResourceConfigurationRule
 from shipsafe.rules.kubernetes.service_port import DuplicatePortNameRule
 from shipsafe.rules.kubernetes.service_selector import ServiceSelectorRule
 from shipsafe.scanner.context import KubernetesContext
+from shipsafe.scanner.github_actions_context import GitHubActionsContext
 from shipsafe.scanner.result import Finding
 
 
@@ -42,6 +51,14 @@ class ScannerEngine:
             DockerSecretRule(),
         ]
 
+        self.github_actions_rules = [
+            UnpinnedActionRule(),
+            ExcessivePermissionsRule(),
+            SecretExposureRule(),
+            MissingTimeoutRule(),
+            PullRequestTargetRule(),
+        ]
+
     def scan(self, path: Path) -> list[Finding]:
         """Run all available scanners against a repository."""
 
@@ -49,6 +66,7 @@ class ScannerEngine:
 
         findings.extend(self.scan_docker(path))
         findings.extend(self.scan_kubernetes(path))
+        findings.extend(self.scan_github_actions(path))
 
         return findings
 
@@ -83,6 +101,35 @@ class ScannerEngine:
         findings: list[Finding] = []
 
         for rule in self.kubernetes_rules:
+            findings.extend(rule.check(context))
+
+        return findings
+
+    def scan_github_actions(self, path: Path) -> list[Finding]:
+        """Scan GitHub Actions workflows."""
+
+        workflows_dir = path / ".github" / "workflows"
+
+        if not workflows_dir.is_dir():
+            return []
+
+        context = GitHubActionsContext()
+
+        for workflow_file in workflows_dir.glob("*.yaml"):
+            workflow = parse_workflow(workflow_file)
+
+            if workflow:
+                context.workflows.append(workflow)
+
+        for workflow_file in workflows_dir.glob("*.yml"):
+            workflow = parse_workflow(workflow_file)
+
+            if workflow:
+                context.workflows.append(workflow)
+
+        findings: list[Finding] = []
+
+        for rule in self.github_actions_rules:
             findings.extend(rule.check(context))
 
         return findings
