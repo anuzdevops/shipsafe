@@ -41,27 +41,22 @@ def scan(path: Path):
     print(f"Scanning: {path}")
     print()
 
-    detected = detect_repository(path)
+    detection = detect_repository(path)
 
     print("Detected:")
-
     print(
-        f"  {'✓' if detected['docker'] else '✗'} Docker"
+        f"  {'✓' if detection['docker'] else '✗'} Docker"
     )
-
     print(
-        f"  {'✓' if detected['kubernetes'] else '✗'} Kubernetes"
+        f"  {'✓' if detection['kubernetes'] else '✗'} Kubernetes"
     )
-
     print(
-        f"  {'✓' if detected['github_actions'] else '✗'} "
+        f"  {'✓' if detection['github_actions'] else '✗'} "
         "GitHub Actions"
     )
-
     print()
 
     engine = ScannerEngine()
-
     findings = engine.scan(path)
 
     if findings:
@@ -69,7 +64,9 @@ def scan(path: Path):
         print()
 
         for finding in findings:
-            print(f"  🔴 {finding.severity}  {finding.rule_id}")
+            print(
+                f"  🔴 {finding.severity}  {finding.rule_id}"
+            )
             print(f"     {finding.title}")
             print(f"     {finding.message}")
             print()
